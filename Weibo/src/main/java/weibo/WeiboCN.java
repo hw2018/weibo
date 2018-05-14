@@ -16,7 +16,7 @@ import java.util.Set;
 public class WeiboCN {
 
     /**
-     * 根据起始时间抓取文章
+     * 根据起始时间抓取微博文章
      *
      * @param startTime
      * @param endTime
