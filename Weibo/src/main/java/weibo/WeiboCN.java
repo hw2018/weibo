@@ -10,6 +10,7 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 import org.openqa.selenium.interactions.Actions;
 
+import java.io.File;
 import java.util.List;
 import java.util.Set;
 
@@ -23,7 +24,7 @@ public class WeiboCN {
      * @return
      * @throws Exception
      */
-    public static String getArtical(Long startTime, Long endTime) throws Exception {
+    public static String getArtical(Long startTime, Long endTime, String savePath) throws Exception {
 
         //driver.close();
 //        driver = new HtmlUnitDriver();
@@ -36,62 +37,80 @@ public class WeiboCN {
         WebDriver driver = new ChromeDriver();
         driver.get("https://weibo.com/p/1005051295674790/wenzhang");
 
+        JavascriptExecutor executor = (JavascriptExecutor) driver;
+
         Thread.sleep(10000);
         // 获取 网页的 title
         // System.out.println(driver.getPageSource());
 
         String mainTitle = driver.getTitle();
-        List<WebElement> elementList = driver.findElements(By.partialLinkText("题源报刊阅读"));
-        // WebElement elements = ((ChromeDriver) driver).findElementById("Pl_Official_Headerv6__1");
 
-        JavascriptExecutor executor = (JavascriptExecutor) driver;
+        //如果有下一页执行抓取数据
+        while (driver.findElements(By.partialLinkText("下一页")).size() > 0) {
+            //找出所以calss为w_autocut的标签
+            List<WebElement> elementList = driver.findElements(By.className("W_autocut"));
+            for (WebElement element : elementList) {
+                //找出所以标签为a的元素
+                if (element.getTagName().equals("a")) {
+                    //找出标签内容为题源报刊阅读
+                    if (element.getText().indexOf("题源报刊") > -1) {
+                        String title = element.getText();
+                        //滚动到当前元素 由于微博有遮罩层  Y-100
+                        executor.executeScript("window.scrollTo(arguments[0],arguments[1]);", 0, element.getLocation().y - 50);
+                        //点开新页面
+                        element.click();
+                        Thread.sleep(5000);
+
+                        //跳到新页面
+                        switchToWindow(title, driver);
+                        WebElement time = driver.findElement(By.className("time"));
+
+                        System.out.println(time.getText());
+                        int index = time.getText().indexOf("发布于");
+                        String currentTime = time.getText().substring(index + 4, time.getText().length());
+
+                        //创建文件
+                        String fileTitle = title.replaceAll(" ", "");
+                        //文件创建有问题
+                        //fileTitle.substring("")
+                        String filePath = savePath + "\\" + fileTitle + currentTime + ".txt";
+                        File currentFile = new File(filePath);
+                        if (!FileUtil.createFile(currentFile)) {
+                            System.out.println("文件创建失败");
+                            return null;
+                        }
+                        Long current = DateFormatUitl.getTimeStamp(currentTime, "yyyy-MM-dd HH:mm:ss");
+                        //时间判断
+                        if (startTime < current || endTime > current) {
+                            break;
+                        }
 
 
-        for (WebElement webElement : elementList) {
+                        //写入标题和时间
+                        FileUtil.fileChaseFW(filePath, title);
+                        FileUtil.fileChaseFW(filePath, time.getText());
 
-            System.out.println(webElement.getAttribute("href"));
-            System.out.println(webElement.getText());
-            String title = webElement.getText();
-            String url = webElement.getAttribute("href");
-            webElement.click();
+                        //获取文章内容
+                        //写入txt
+                        List<WebElement> webElementText = driver.findElements(By.tagName("p"));
+                        for (int i = 0; i < webElementText.size(); i++) {
 
+                            FileUtil.fileChaseFW(filePath, webElementText.get(i).getText());
+                        }
 
-            //test
+                        switchToWindow(mainTitle, driver);
+                    }
+                }
 
-
-            Thread.sleep(5000);
-
-            switchToWindow(title, driver);
-            WebElement time = driver.findElement(By.className("time"));
-            System.out.println(time.getText());
-            int index = time.getText().indexOf("发布于");
-            String currentTime = time.getText().substring(index + 4, time.getText().length());
-            Long current = DateFormatUitl.getTimeStamp(currentTime, "yyyy-MM-dd HH:mm:ss");
-            if (startTime < current || endTime > current) {
-                break;
+                //    executor.executeScript("arguments[0].scrollIntoView();", element);
             }
 
-            //获取文章内容
-//            List<WebElement> webElementText = driver.findElements(By.tagName("p"));
-//            for (int i = 0; i < webElementText.size(); i++) {
-//                System.out.println(webElementText.get(i).getText());
-//            }
-//
-//            switchToWindow(mainTitle, driver);
-//            executor.executeScript("arguments[0].scrollIntoView();", webElement);
-            //  driver.close();
-            //switchToWindow(mainTitle, driver);
-            // openNewWindow(driver, url, title);
+            driver.findElements(By.partialLinkText("下一页")).get(0).click();
+            Thread.sleep(10000);
+
         }
-
-        // driver.quit();
-
         return null;
-//        if (result.contains("SUB")) {
-//            return result;
-//        } else {
-//            throw new Exception("weibo login failed");
-//        }
+
     }
 
     public static WebDriver openNewWindow(WebDriver driver, String url, String titleName) {
@@ -109,9 +128,9 @@ public class WeiboCN {
             String currentHandle = dr.getWindowHandle();
             Set<String> handles = dr.getWindowHandles();
             for (String s : handles) {
-                if (s.equals(currentHandle))
+                if (s.equals(currentHandle)) {
                     continue;
-                else {
+                } else {
                     dr.switchTo().window(s);
                     //和当前的窗口进行比较如果相同就切换到windowhandle
                     //判断title是否和handles当前的窗口相同
@@ -120,8 +139,9 @@ public class WeiboCN {
                         System.out.println("Switch to window: "
                                 + windowTitle + " successfully!");
                         break;
-                    } else
+                    } else {
                         continue;
+                    }
                 }
             }
         } catch (Exception e) {
