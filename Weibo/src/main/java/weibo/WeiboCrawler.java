@@ -19,8 +19,9 @@ public class WeiboCrawler extends BreadthCrawler {
     public WeiboCrawler(String crawlPath) throws Exception {
         super(crawlPath, false);
         /* 获取新浪微博的cookie，账号密码以明文形式传输，请使用小号 */
-        String startTime = "2018-05-01 00:00:00";
+        String startTime = "2018-05-29 00:00:00";
         String endTime = "2018-06-01 00:00:00";
+        FileUtil.delAllFile("C:\\Users\\huangwei\\Desktop\\微博\\题源报刊");
         WeiboCN.getArtical(DateFormatUitl.getTimeStamp(startTime, "yyyy-MM-dd HH:mm:ss"), DateFormatUitl.getTimeStamp(endTime, "yyyy-MM-dd HH:mm:ss"), "C:\\Users\\huangwei\\Desktop\\微博\\题源报刊");
 
         //设置线程数
